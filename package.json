@@ -96,7 +96,7 @@
     "shelljs": "^0.8.4",
     "sinon": "^11.1.1",
     "socket.io": "^2.3.0",
-    "socket.io-redis": "^5.4.0",
+    "socket.io-redis": "^6.1.1",
     "stelace-util-keys": "https://github.com/stelace/stelace-util-keys.git#3.0.1",
     "superagent": "~6.1.0",
     "useragent": "^2.3.0",
