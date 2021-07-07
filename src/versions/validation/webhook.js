@@ -1,4 +1,4 @@
-const { Joi, objectIdParamsSchema, getRangeFilter } = require('../../util/validation')
+const { Joi, objectIdParamsSchema, getRangeFilter, getArrayFilter } = require('../../util/validation')
 const { apiVersions } = require('../util')
 const { DEFAULT_NB_RESULTS_PER_PAGE } = require('../../util/pagination')
 
@@ -30,10 +30,10 @@ schemas['2020-08-10'].list = {
       endingBefore: Joi.string(),
 
       // filters
-      id: Joi.array().unique().items(Joi.string()).single(),
+      id: getArrayFilter(Joi.string()),
       createdDate: getRangeFilter(Joi.string().isoDate()),
       updatedDate: getRangeFilter(Joi.string().isoDate()),
-      event: Joi.array().unique().items(Joi.string()).single(),
+      event: getArrayFilter(Joi.string()),
       active: Joi.boolean(),
     })
     .oxor('startingAfter', 'endingBefore')
@@ -52,11 +52,11 @@ schemas['2020-08-10'].listLogs = {
       endingBefore: Joi.string(),
 
       // filters
-      id: Joi.array().unique().items(Joi.string()).single(),
+      id: getArrayFilter(Joi.string()),
       createdDate: getRangeFilter(Joi.string().isoDate()),
-      webhookId: Joi.array().unique().items(Joi.string()).single(),
-      eventId: Joi.array().unique().items(Joi.string()).single(),
-      status: Joi.array().unique().items(Joi.string()).single(),
+      webhookId: getArrayFilter(Joi.string()),
+      eventId: getArrayFilter(Joi.string()),
+      status: getArrayFilter(Joi.string()),
     })
     .oxor('startingAfter', 'endingBefore')
 }

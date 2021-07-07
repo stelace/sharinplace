@@ -2,6 +2,7 @@ const {
   Joi,
   objectIdParamsSchema,
   getRangeFilter,
+  getArrayFilter,
   replaceOffsetWithCursorPagination,
 } = require('../../util/validation')
 const { DEFAULT_NB_RESULTS_PER_PAGE } = require('../../util/pagination')
@@ -58,13 +59,13 @@ schemas['2019-05-20'].list = {
     nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
     // filters
-    id: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    id: getArrayFilter(Joi.string()),
     createdDate: getRangeFilter(Joi.string().isoDate()),
     updatedDate: getRangeFilter(Joi.string().isoDate()),
-    assetId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-    assetTypeId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-    ownerId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-    takerId: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    assetId: getArrayFilter(Joi.string()),
+    assetTypeId: getArrayFilter(Joi.string()),
+    ownerId: getArrayFilter(Joi.string()),
+    takerId: getArrayFilter(Joi.string()),
     value: getRangeFilter(Joi.number().min(0)),
     ownerAmount: getRangeFilter(Joi.number().min(0)),
     takerAmount: getRangeFilter(Joi.number().min(0)),

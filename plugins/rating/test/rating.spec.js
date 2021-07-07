@@ -2,6 +2,7 @@ require('dotenv').config()
 
 const test = require('ava')
 const request = require('supertest')
+const _ = require('lodash')
 
 const {
   testTools: { lifecycle, auth, util }
@@ -17,6 +18,8 @@ const {
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
   checkCursorPaginatedStatsObject,
+
+  checkFilters,
 } = util
 
 test.before(async t => {
@@ -198,6 +201,77 @@ test('gets aggregated rating stats with multiple labels', async (t) => {
   checkStatObject(results[0]['main:pricing'])
 })
 
+// use serial because no changes must be made during the check
+test.serial('check history filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({
+    t,
+    permissions: [
+      'rating:stats:all',
+      'rating:list:all',
+    ]
+  })
+
+  const groupBys = [
+    'authorId', // document first-level property
+    'assetId', // document data sub-property
+  ]
+
+  for (const groupBy of groupBys) {
+    const { body: { results } } = await request(t.context.serverUrl)
+      .get('/ratings?nbResultsPerPage=100')
+      .set(authorizationHeaders)
+      .expect(200)
+
+    const resultsByGroupBy = _.groupBy(results, groupBy)
+
+    const customExactValueCheck = _.curry((prop, obj, value) => {
+      let filteredResults = resultsByGroupBy[obj[groupBy]] || []
+      filteredResults = filteredResults.filter(r => r[prop] === value)
+      return filteredResults.length === obj.count
+    })
+
+    const customArrayValuesCheck = _.curry((prop, obj, values) => {
+      let filteredResults = resultsByGroupBy[obj[groupBy]] || []
+      filteredResults = filteredResults.filter(r => values.includes(r[prop]))
+      return filteredResults.length === obj.count
+    })
+
+    await checkFilters({
+      t,
+      endpointUrl: `/ratings/stats?groupBy=${groupBy}`,
+      fetchEndpointUrl: '/ratings',
+      authorizationHeaders,
+      checkPaginationObject: checkCursorPaginatedListObject,
+
+      filters: [
+        {
+          prop: 'authorId',
+          customExactValueFilterCheck: customExactValueCheck('authorId'),
+          customArrayFilterCheck: customArrayValuesCheck('authorId'),
+        },
+        {
+          prop: 'targetId',
+          customExactValueFilterCheck: customExactValueCheck('targetId'),
+          customArrayFilterCheck: customArrayValuesCheck('targetId'),
+        },
+        {
+          prop: 'assetId',
+          customExactValueFilterCheck: customExactValueCheck('assetId'),
+        },
+        {
+          prop: 'transactionId',
+          customExactValueFilterCheck: customExactValueCheck('transactionId'),
+        },
+        {
+          prop: 'label',
+          // multiple labels filter on stats are tested on other tests
+          customExactValueFilterCheck: customExactValueCheck('label'),
+        },
+      ],
+    })
+  }
+})
+
 // need serial to ensure there is no insertion/deletion during pagination scenario
 test.serial('lists ratings with pagination', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['rating:list:all'] })
@@ -219,6 +293,43 @@ test('lists ratings with id filter', async (t) => {
 
   checkCursorPaginatedListObject(t, obj)
   t.is(obj.results.length, 1)
+})
+
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['rating:list:all'] })
+
+  await checkFilters({
+    t,
+    endpointUrl: '/ratings',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'authorId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'targetId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'assetId',
+      },
+      {
+        prop: 'transactionId',
+      },
+      {
+        prop: 'label',
+        isArrayFilter: true,
+      },
+    ],
+  })
 })
 
 test('lists ratings with advanced filter', async (t) => {

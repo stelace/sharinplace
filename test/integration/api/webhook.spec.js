@@ -17,6 +17,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 const { apiVersions } = require('../../../src/versions')
 
@@ -73,22 +75,39 @@ test.serial('list webhooks', async (t) => {
   })
 })
 
-test('list webhooks with advanced filters', async (t) => {
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['webhook:list:all'] })
 
-  const minDate = '2019-01-01T00:00:00.000Z'
+  await checkFilters({
+    t,
+    endpointUrl: '/webhooks',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get(`/webhooks?createdDate[gte]=${encodeURIComponent(minDate)}&active=true`)
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const checkResultsFn = (t, webhook) => {
-    t.true(webhook.active)
-    t.true(webhook.createdDate >= minDate)
-  }
-
-  checkCursorPaginatedListObject(t, obj, { checkResultsFn })
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'event',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'active',
+        customTestValues: [true, false],
+      },
+    ],
+  })
 })
 
 test('list webhooks with custom namespace', async (t) => {

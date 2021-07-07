@@ -14,7 +14,9 @@ const {
   checkCursorPaginatedListObject,
 
   checkOffsetPaginationScenario,
-  checkOffsetPaginatedListObject
+  checkOffsetPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 const { encodeBase64 } = require('../../../src/util/encoding')
 
@@ -40,16 +42,37 @@ test.serial('list api keys with pagination', async (t) => {
   })
 })
 
-test('list api keys with id filter', async (t) => {
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['apiKey:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/api-keys?id=apik_aHZQps1I3b1gJYz2I3a')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/api-keys',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'type',
+        customTestValues: ['seck', 'pubk', 'cntk', 'custom'],
+        customExactValueFilterCheck: (obj, value) => obj.key.startsWith(value),
+      }
+      // `reveal` are tested in other tests
+    ],
+  })
 })
 
 test('list api keys with api key', async (t) => {

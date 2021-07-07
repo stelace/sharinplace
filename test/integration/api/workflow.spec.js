@@ -21,6 +21,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 const { encodeBase64 } = require('../../../src/util/encoding')
@@ -126,6 +128,41 @@ test('list workflows with advanced filters', async (t) => {
   }
 
   checkCursorPaginatedListObject(t, obj, { checkResultsFn })
+})
+
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['workflow:list:all'] })
+
+  await checkFilters({
+    t,
+    endpointUrl: '/workflows',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'event',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'active',
+        customTestValues: [true, false],
+      },
+    ],
+  })
 })
 
 test('list workflows with custom namespace', async (t) => {

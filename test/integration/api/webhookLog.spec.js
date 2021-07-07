@@ -18,6 +18,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 let userWebhookUrl
@@ -151,25 +153,6 @@ test.serial('list webhook logs', async (t) => {
   })
 })
 
-test('list webhook logs with id filter', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['webhookLog:list:all'] })
-
-  const { body: { results: webhookLogs } } = await request(t.context.serverUrl)
-    .get('/webhook-logs')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const webhookLog = webhookLogs[0]
-
-  const { body: obj } = await request(t.context.serverUrl)
-    .get(`/webhook-logs?id=${webhookLog.id}`)
-    .set(authorizationHeaders)
-    .expect(200)
-
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
-})
-
 test('list webhook logs with advanced filters', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['webhookLog:list:all'] })
 
@@ -196,6 +179,41 @@ test('list webhook logs with advanced filters', async (t) => {
   }
 
   checkCursorPaginatedListObject(t, obj, { checkResultsFn })
+})
+
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['webhookLog:list:all'] })
+
+  await checkFilters({
+    t,
+    endpointUrl: '/webhook-logs',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'webhookId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'eventId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'status',
+        isArrayFilter: true,
+      },
+    ],
+  })
 })
 
 test('finds a webhook log', async (t) => {

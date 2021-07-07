@@ -1,4 +1,4 @@
-const { Joi, objectIdParamsSchema, getRangeFilter } = require('../../util/validation')
+const { Joi, objectIdParamsSchema, getRangeFilter, getArrayFilter } = require('../../util/validation')
 const { apiVersions } = require('../util')
 const { DEFAULT_NB_RESULTS_PER_PAGE } = require('../../util/pagination')
 
@@ -52,10 +52,10 @@ schemas['2020-08-10'].list = {
       nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
       // filters
-      id: Joi.array().unique().items(Joi.string()).single(),
+      id: getArrayFilter(Joi.string()),
       createdDate: getRangeFilter(Joi.string().isoDate()),
       updatedDate: getRangeFilter(Joi.string().isoDate()),
-      event: Joi.array().unique().items(Joi.string()).single(),
+      event: getArrayFilter(Joi.string()),
       active: Joi.boolean(),
     })
     .oxor('startingAfter', 'endingBefore')
@@ -75,12 +75,12 @@ schemas['2020-08-10'].getLogsHistory = {
     groupBy: Joi.string().valid('hour', 'day', 'month').required(),
 
     // filters
-    id: Joi.array().unique().items(Joi.string()).single(),
+    id: getArrayFilter(Joi.string()),
     createdDate: getRangeFilter(Joi.string().isoDate()),
-    workflowId: Joi.array().unique().items(Joi.string()).single(),
-    eventId: Joi.array().unique().items(Joi.string()).single(),
-    runId: Joi.array().unique().items(Joi.string()).single(),
-    type: Joi.array().unique().items(Joi.string()).single(),
+    workflowId: getArrayFilter(Joi.string()),
+    eventId: getArrayFilter(Joi.string()),
+    runId: getArrayFilter(Joi.string()),
+    type: getArrayFilter(Joi.string()),
   })
 }
 schemas['2020-08-10'].listLogs = {
@@ -96,13 +96,12 @@ schemas['2020-08-10'].listLogs = {
       nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
       // filters
-      id: Joi.array().unique().items(Joi.string()).single(),
+      id: getArrayFilter(Joi.string()),
       createdDate: getRangeFilter(Joi.string().isoDate()),
-      workflowId: Joi.array().unique().items(Joi.string()).single(),
-      eventId: Joi.array().unique().items(Joi.string()).single(),
-      runId: Joi.array().unique().items(Joi.string()).single(),
-      type: Joi.array().unique().items(Joi.string()).single(),
-      statusCode: Joi.array().unique().items(Joi.string()).single(),
+      workflowId: getArrayFilter(Joi.string()),
+      eventId: getArrayFilter(Joi.string()),
+      runId: getArrayFilter(Joi.string()),
+      type: getArrayFilter(Joi.string()),
     })
     .oxor('startingAfter', 'endingBefore')
 }

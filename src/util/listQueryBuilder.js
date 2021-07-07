@@ -116,6 +116,8 @@ function addFiltersToQueryBuilder (queryBuilder, filters, transformedValues) {
           throw createError(400, `${key} value cannot be lower than ${minValue}`)
         }
 
+        const isSingleValue = !_.isPlainObject(transformedValue)
+
         // throw if the `minValue` option is provided
         // and the provided range value doesn't meet this condition
         // otherwise if the provided range value is an object but properties `gt` and `gte` aren't present
@@ -124,23 +126,26 @@ function addFiltersToQueryBuilder (queryBuilder, filters, transformedValues) {
         if (!_.isUndefined(minRangeValue)) {
           if (minRangeValue < minValue) throwMinValueError()
         } else {
-          const isSingleValue = !_.isPlainObject(transformedValue)
           if (!isSingleValue && _.isUndefined(transformedValue.gt) && _.isUndefined(transformedValue.gte)) {
             transformedValue.gte = minValue
           }
         }
 
-        if (transformedValue.lt) {
-          queryBuilder.where(dbField, '<', transformedValue.lt)
-        }
-        if (transformedValue.lte) {
-          queryBuilder.where(dbField, '<=', transformedValue.lte)
-        }
-        if (transformedValue.gt) {
-          queryBuilder.where(dbField, '>', transformedValue.gt)
-        }
-        if (transformedValue.gte) {
-          queryBuilder.where(dbField, '>=', transformedValue.gte)
+        if (isSingleValue) {
+          queryBuilder.where(dbField, transformedValue)
+        } else {
+          if (transformedValue.lt) {
+            queryBuilder.where(dbField, '<', transformedValue.lt)
+          }
+          if (transformedValue.lte) {
+            queryBuilder.where(dbField, '<=', transformedValue.lte)
+          }
+          if (transformedValue.gt) {
+            queryBuilder.where(dbField, '>', transformedValue.gt)
+          }
+          if (transformedValue.gte) {
+            queryBuilder.where(dbField, '>=', transformedValue.gte)
+          }
         }
       } else if (query === 'inList') {
         queryBuilder.whereIn(dbField, transformedValue)

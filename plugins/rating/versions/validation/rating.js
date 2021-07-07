@@ -15,7 +15,7 @@ const orderByFields = [
 module.exports = function createValidation (deps) {
   const {
     utils: {
-      validation: { objectIdParamsSchema, replaceOffsetWithCursorPagination },
+      validation: { objectIdParamsSchema, replaceOffsetWithCursorPagination, getArrayFilter },
       pagination: { DEFAULT_NB_RESULTS_PER_PAGE }
     }
   } = deps
@@ -52,10 +52,10 @@ module.exports = function createValidation (deps) {
       computeRanking: Joi.boolean(),
 
       // filters
-      authorId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-      targetId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-      assetId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-      transactionId: [Joi.string(), Joi.array().unique().items(Joi.string())],
+      authorId: getArrayFilter(Joi.string()),
+      targetId: getArrayFilter(Joi.string()),
+      assetId: Joi.string(),
+      transactionId: Joi.string(),
       label: [multipleLabelsWithWildcardSchema, Joi.array().unique().items(labelWithWildcardSchema)]
     })
   }
@@ -70,11 +70,11 @@ module.exports = function createValidation (deps) {
       nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
       // filters
-      id: [Joi.string(), Joi.array().unique().items(Joi.string())],
-      authorId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-      targetId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-      assetId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-      transactionId: [Joi.string(), Joi.array().unique().items(Joi.string())],
+      id: getArrayFilter(Joi.string()),
+      authorId: getArrayFilter(Joi.string()),
+      targetId: getArrayFilter(Joi.string()),
+      assetId: Joi.string(),
+      transactionId: Joi.string(),
       label: [multipleLabelsWithWildcardSchema, Joi.array().unique().items(labelWithWildcardSchema)]
     })
   }

@@ -16,6 +16,8 @@ const {
 
   checkOffsetPaginationScenario,
   checkOffsetPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 test.before(async t => {
@@ -75,66 +77,58 @@ test('list assets for the current user', async (t) => {
   t.pass()
 })
 
-test('list assets with id filter', async (t) => {
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/assets?id=ast_0TYM7rs1OwP1gQRuCOwP')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/assets',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
-})
-
-test('list assets with advanced filters', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
-
-  const result1 = await request(t.context.serverUrl)
-    .get('/assets?ownerId=user_QVQzajA5ZnMxgYbWM930qpyvKyRHMxJ,user-external-id&active=true')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const obj1 = result1.body
-
-  obj1.results.forEach(asset => {
-    t.true(['usr_QVQfQps1I3a1gJYz2I3a', 'user-external-id'].includes(asset.ownerId))
-    t.true(asset.active)
-  })
-
-  const result2 = await request(t.context.serverUrl)
-    .get('/assets?ownerId[]=user_QVQzajA5ZnMxgYbWM930qpyvKyRHMxJ&ownerId[]=user-external-id')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const obj2 = result2.body
-
-  obj2.results.forEach(asset => {
-    t.true(['usr_QVQfQps1I3a1gJYz2I3a', 'user-external-id'].includes(asset.ownerId))
-  })
-
-  const result3 = await request(t.context.serverUrl)
-    .get('/assets?assetTypeId=typ_RFpfQps1I3a1gJYz2I3a&validated=false')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const obj3 = result3.body
-
-  obj3.results.forEach(asset => {
-    t.true(['typ_RFpfQps1I3a1gJYz2I3a'].includes(asset.assetTypeId))
-    t.false(asset.validated)
-  })
-
-  const result4 = await request(t.context.serverUrl)
-    .get('/assets?price[gte]=100&categoryId=ctgy_ejQQps1I3a1gJYz2I3a')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const obj4 = result4.body
-
-  obj4.results.forEach(asset => {
-    t.true(asset.price >= 100)
-    t.is(asset.categoryId, 'ctgy_ejQQps1I3a1gJYz2I3a')
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'ownerId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'categoryId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'assetTypeId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'validated',
+        customTestValues: [true, false],
+      },
+      {
+        prop: 'active',
+        customTestValues: [true, false],
+      },
+      {
+        prop: 'quantity',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'price',
+        isRangeFilter: true,
+      },
+    ],
   })
 })
 

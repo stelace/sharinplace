@@ -112,6 +112,13 @@ function getRangeFilter (joiType) {
   )
 }
 
+function getArrayFilter (joiType) {
+  return customJoi.alternatives().try(
+    joiType,
+    Joi.array().unique().items(joiType),
+  )
+}
+
 const idsSchema = customJoi.array().unique().items(customJoi.string()).single()
 
 const locationSchema = customJoi.object().unknown().keys({
@@ -176,5 +183,6 @@ module.exports = {
   objectIdParamsSchema,
   searchSchema,
   getRangeFilter,
+  getArrayFilter,
   replaceOffsetWithCursorPagination,
 }

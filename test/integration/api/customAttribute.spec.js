@@ -15,6 +15,8 @@ const {
 
   checkOffsetPaginationScenario,
   checkOffsetPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 test.before(async (t) => {
@@ -35,16 +37,23 @@ test.serial('list custom attributes with pagination', async (t) => {
   })
 })
 
-test('list custom attributes with id filter', async (t) => {
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['customAttribute:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/custom-attributes?id=attr_WmwQps1I3a1gJYz2I3a')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/custom-attributes',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+    ],
+  })
 })
 
 test('finds a custom attribute', async (t) => {

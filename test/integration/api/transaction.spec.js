@@ -16,6 +16,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 const { getObjectEvent, testEventMetadata } = require('../../util')
 
@@ -114,38 +116,63 @@ test('list transactions for the current user', async (t) => {
   t.pass()
 })
 
-test('list transactions with id filter', async (t) => {
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['transaction:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/transactions?id=trn_a3BfQps1I3a1gJYz2I3a')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/transactions',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
-})
-
-test('list transactions with advanced filters', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['transaction:list:all'] })
-
-  const result1 = await request(t.context.serverUrl)
-    .get('/transactions?ownerId=fd7b4ea9-a899-4dba-b9b0-ef8537a70efe,ff4bf0dd-b1d9-49c9-8c61-3e3baa04181c')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const obj1 = result1.body
-
-  t.is(obj1.results.length, 4)
-
-  const result2 = await request(t.context.serverUrl)
-    .get('/transactions?takerId[]=fd7b4ea9-a899-4dba-b9b0-ef8537a70efe&assetId=ast_0TYM7rs1OwP1gQRuCOwP')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const obj2 = result2.body
-
-  t.is(obj2.results.length, 0)
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'assetId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'assetTypeId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'ownerId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'takerId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'value',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'ownerAmount',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'takerAmount',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'platformAmount',
+        isRangeFilter: true,
+      },
+    ],
+  })
 })
 
 test('list transactions with pricing filters', async (t) => {

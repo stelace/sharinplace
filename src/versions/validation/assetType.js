@@ -1,4 +1,4 @@
-const { Joi, objectIdParamsSchema, getRangeFilter } = require('../../util/validation')
+const { Joi, objectIdParamsSchema, getRangeFilter, getArrayFilter } = require('../../util/validation')
 const { DEFAULT_NB_RESULTS_PER_PAGE } = require('../../util/pagination')
 const { allowedTimeUnits } = require('../../util/time')
 
@@ -40,7 +40,7 @@ schemas['2020-08-10'].list = {
       endingBefore: Joi.string(),
 
       // filters
-      id: Joi.array().unique().items(Joi.string()).single(),
+      id: getArrayFilter(Joi.string()),
       createdDate: getRangeFilter(Joi.string().isoDate()),
       updatedDate: getRangeFilter(Joi.string().isoDate()),
       isDefault: Joi.boolean(),

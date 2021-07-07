@@ -2,6 +2,7 @@ const {
   Joi,
   objectIdParamsSchema,
   replaceOffsetWithCursorPagination,
+  getArrayFilter,
 } = require('../../util/validation')
 const { DEFAULT_NB_RESULTS_PER_PAGE } = require('../../util/pagination')
 
@@ -57,8 +58,8 @@ schemas['2019-05-20'].getStats = {
     // filters
     type: Joi.string().required(),
     label: [multipleLabelsWithWildcardSchema, Joi.array().unique().items(labelWithWildcardSchema)],
-    authorId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-    targetId: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    authorId: getArrayFilter(Joi.string()),
+    targetId: getArrayFilter(Joi.string()),
     data: Joi.object().unknown()
   }).required()
 }
@@ -73,11 +74,11 @@ schemas['2019-05-20'].list = {
     nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
     // filters
-    id: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    id: getArrayFilter(Joi.string()),
     type: Joi.string().required(),
     label: [multipleLabelsWithWildcardSchema, Joi.array().unique().items(labelWithWildcardSchema)],
-    authorId: [Joi.string(), Joi.array().unique().items(Joi.string())],
-    targetId: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    authorId: getArrayFilter(Joi.string()),
+    targetId: getArrayFilter(Joi.string()),
     data: Joi.object().unknown()
   }).required()
 }

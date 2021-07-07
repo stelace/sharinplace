@@ -8,8 +8,9 @@ const { getAccessTokenHeaders } = require('../../auth')
 const {
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
-const { computeDate } = require('../../../src/util/time')
 
 test.before(async t => {
   await before({ name: 'role' })(t)
@@ -29,31 +30,42 @@ test.serial('lists roles', async (t) => {
   })
 })
 
-test('list roles with id filter', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['task:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/roles?id=role_C5ZIBs105v1gHK1i05v')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/tasks',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
-})
-
-test('list roles with advanced filters', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
-
-  const now = new Date().toISOString()
-  const minCreatedDate = computeDate(now, '-10d')
-
-  const { body: obj1 } = await request(t.context.serverUrl)
-    .get(`/roles?createdDate[gte]=${minCreatedDate}`)
-    .set(authorizationHeaders)
-    .expect(200)
-
-  obj1.results.forEach(category => {
-    t.true(category.createdDate >= minCreatedDate)
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'eventType',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'eventObjectId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'active',
+        customTestValues: [true, false],
+      },
+    ],
   })
 })
 

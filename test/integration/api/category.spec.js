@@ -10,8 +10,9 @@ const {
   testEventMetadata,
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
-const { computeDate } = require('../../../src/util/time')
 
 test.before(async (t) => {
   await before({ name: 'category' })(t)
@@ -72,42 +73,34 @@ test.serial('list categories', async (t) => {
   })
 })
 
-test('list categories with id filter', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['category:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/categories?id=ctgy_ejQQps1I3a1gJYz2I3a')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/categories',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
-})
-
-test('list categories with advanced filters', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
-
-  const now = new Date().toISOString()
-  const minCreatedDate = computeDate(now, '-10d')
-
-  const { body: obj1 } = await request(t.context.serverUrl)
-    .get(`/categories?createdDate[gte]=${minCreatedDate}`)
-    .set(authorizationHeaders)
-    .expect(200)
-
-  obj1.results.forEach(category => {
-    t.true(category.createdDate >= minCreatedDate)
-  })
-
-  const parentId = 'ctgy_WW5Qps1I3a1gJYz2I3a'
-
-  const { body: obj2 } = await request(t.context.serverUrl)
-    .get(`/categories?parentId=${parentId}`)
-    .set(authorizationHeaders)
-    .expect(200)
-
-  obj2.results.forEach(category => {
-    t.true(category.parentId >= parentId)
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'parentId',
+        isArrayFilter: true,
+      },
+    ],
   })
 })
 

@@ -14,6 +14,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 test.before(async t => {
@@ -77,6 +79,37 @@ test('list entries with advanced filters', async (t) => {
   obj3.results.forEach(entry => {
     t.true(['website', 'email'].includes(entry.collection))
     t.true(['home', 'signup'].includes(entry.name))
+  })
+})
+
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
+
+  await checkFilters({
+    t,
+    endpointUrl: '/entries',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'collection',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'locale',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'name',
+        isArrayFilter: true,
+      },
+    ],
   })
 })
 

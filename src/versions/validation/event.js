@@ -2,6 +2,7 @@ const {
   Joi,
   objectIdParamsSchema,
   getRangeFilter,
+  getArrayFilter,
   replaceOffsetWithCursorPagination,
 } = require('../../util/validation')
 const { DEFAULT_NB_RESULTS_PER_PAGE } = require('../../util/pagination')
@@ -61,13 +62,13 @@ schemas['2020-08-10'].getHistory = {
     groupBy: Joi.string().valid('hour', 'day', 'month').required(),
 
     // filters
-    id: Joi.array().unique().items(Joi.string()).single(),
+    id: getArrayFilter(Joi.string()),
     createdDate: getRangeFilter(Joi.string().isoDate()),
-    type: Joi.array().unique().items(Joi.string()).single(),
-    objectType: Joi.array().unique().items(Joi.string()).single(),
-    objectId: Joi.array().unique().items(Joi.string()).single(),
+    type: getArrayFilter(Joi.string()),
+    objectType: getArrayFilter(Joi.string()),
+    objectId: getArrayFilter(Joi.string()),
     emitter: Joi.string().valid('core', 'custom', 'task'),
-    emitterId: Joi.array().unique().items(Joi.string()).single()
+    emitterId: getArrayFilter(Joi.string())
   })
 }
 schemas['2020-08-10'].list = () => ({
@@ -98,13 +99,13 @@ schemas['2019-05-20'].getStats = {
     avgPrecision: Joi.number().integer().min(0).default(2),
 
     // filters
-    id: Joi.array().unique().items(Joi.string()).single(),
+    id: getArrayFilter(Joi.string()),
     createdDate: getRangeFilter(Joi.string().isoDate()),
-    type: Joi.array().unique().items(Joi.string()).single(),
-    objectType: Joi.array().unique().items(Joi.string()).single(),
-    objectId: Joi.array().unique().items(Joi.string()).single(),
+    type: getArrayFilter(Joi.string()),
+    objectType: getArrayFilter(Joi.string()),
+    objectId: getArrayFilter(Joi.string()),
     emitter: Joi.string().valid('core', 'custom', 'task'),
-    emitterId: Joi.array().unique().items(Joi.string()).single(),
+    emitterId: getArrayFilter(Joi.string()),
     object: Joi.object().unknown(),
     metadata: Joi.object().unknown()
   })
@@ -121,13 +122,13 @@ schemas['2019-05-20'].list = {
     nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
     // filters
-    id: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    id: getArrayFilter(Joi.string()),
     createdDate: getRangeFilter(Joi.string().isoDate()),
-    type: [Joi.string(), Joi.array().unique().items(Joi.string())],
-    objectType: [Joi.string(), Joi.array().unique().items(Joi.string())],
-    objectId: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    type: getArrayFilter(Joi.string()),
+    objectType: getArrayFilter(Joi.string()),
+    objectId: getArrayFilter(Joi.string()),
     emitter: Joi.string().valid('core', 'custom', 'task'),
-    emitterId: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    emitterId: getArrayFilter(Joi.string()),
     object: Joi.object().unknown(),
     metadata: Joi.object().unknown()
   })

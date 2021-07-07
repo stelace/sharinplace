@@ -14,6 +14,8 @@ const {
   checkCursorPaginatedStatsObject,
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 test.before(async (t) => {
@@ -518,6 +520,70 @@ test('fails to get aggregated stats with non-number field', async (t) => {
   t.true(error.message.includes(`Non-number value was found for field "${field}"`))
 })
 
+// use serial because no changes must be made during the check
+test.serial('check history filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({
+    t,
+    permissions: [
+      'document:stats:all',
+      'document:list:all',
+    ]
+  })
+
+  const groupBys = [
+    'authorId', // document first-level property
+    'data.director', // document data sub-property
+  ]
+
+  for (const groupBy of groupBys) {
+    const { body: { results } } = await request(t.context.serverUrl)
+      .get('/documents?nbResultsPerPage=100&type=movie')
+      .set(authorizationHeaders)
+      .expect(200)
+
+    const resultsByGroupBy = _.groupBy(results, groupBy)
+
+    const customExactValueCheck = _.curry((prop, obj, value) => {
+      let filteredResults = resultsByGroupBy[obj.groupByValue] || []
+      filteredResults = filteredResults.filter(r => r[prop] === value)
+      return filteredResults.length === obj.count
+    })
+
+    const customArrayValuesCheck = _.curry((prop, obj, values) => {
+      let filteredResults = resultsByGroupBy[obj.groupByValue] || []
+      filteredResults = filteredResults.filter(r => values.includes(r[prop]))
+      return filteredResults.length === obj.count
+    })
+
+    await checkFilters({
+      t,
+      endpointUrl: `/documents/stats?groupBy=${groupBy}&type=movie`,
+      fetchEndpointUrl: '/documents?type=movie',
+      authorizationHeaders,
+      checkPaginationObject: checkCursorPaginatedListObject,
+
+      filters: [
+        {
+          prop: 'authorId',
+          customExactValueFilterCheck: customExactValueCheck('authorId'),
+          customArrayFilterCheck: customArrayValuesCheck('authorId'),
+        },
+        {
+          prop: 'targetId',
+          customExactValueFilterCheck: customExactValueCheck('targetId'),
+          customArrayFilterCheck: customArrayValuesCheck('targetId'),
+        },
+        {
+          prop: 'label',
+          // multiple labels filter on stats are tested on other tests
+          customExactValueFilterCheck: customExactValueCheck('label'),
+        },
+        // `data` is tested in other tests
+      ],
+    })
+  }
+})
+
 // need serial to ensure there is no insertion/deletion during pagination scenario
 test.serial('list documents with pagination', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['document:list:all'] })
@@ -529,16 +595,36 @@ test.serial('list documents with pagination', async (t) => {
   })
 })
 
-test('list documents with id filter', async (t) => {
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['document:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/documents?type=invoice&id=doc_WWRfQps1I3a1gJYz2I3a')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/documents?type=invoice',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'label',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'authorId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'targetId',
+        isArrayFilter: true,
+      },
+      // `data` is tested in other tests
+    ],
+  })
 })
 
 test('list documents with advanced filters', async (t) => {

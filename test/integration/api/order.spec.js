@@ -15,6 +15,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 test.before(async (t) => {
@@ -207,6 +209,30 @@ test('list orders with advanced filters', async (t) => {
     t.true(order.lines.reduce((memo, line) => {
       return memo || line.transactionId === 'trn_Wm1fQps1I3a1gJYz2I3a'
     }, false))
+  })
+})
+
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['order:list:all'] })
+
+  await checkFilters({
+    t,
+    endpointUrl: '/orders',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'payerId',
+        isArrayFilter: true,
+      },
+      // `receiverId` and `transactionId` tested in other tests
+    ],
   })
 })
 

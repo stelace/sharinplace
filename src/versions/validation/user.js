@@ -2,6 +2,7 @@ const {
   Joi,
   objectIdParamsSchema,
   getRangeFilter,
+  getArrayFilter,
   replaceOffsetWithCursorPagination,
 } = require('../../util/validation')
 const { DEFAULT_NB_RESULTS_PER_PAGE } = require('../../util/pagination')
@@ -75,12 +76,12 @@ schemas['2019-05-20'].list = {
     nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
     // filters
-    id: [Joi.string(), Joi.array().unique().items(Joi.string())],
+    id: getArrayFilter(Joi.string()),
     createdDate: getRangeFilter(Joi.string().isoDate()),
     updatedDate: getRangeFilter(Joi.string().isoDate()),
     query: Joi.string(),
     type: Joi.string().valid('organization', 'user', 'all'),
-    userOrganizationId: [Joi.string(), Joi.array().unique().items(Joi.string())]
+    userOrganizationId: getArrayFilter(Joi.string())
   })
 }
 schemas['2019-05-20'].read = {

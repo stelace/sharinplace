@@ -9,7 +9,7 @@ const orderByFields = [
 module.exports = function createValidation (deps) {
   const {
     utils: {
-      validation: { objectIdParamsSchema, replaceOffsetWithCursorPagination },
+      validation: { objectIdParamsSchema, replaceOffsetWithCursorPagination, getArrayFilter },
       pagination: { DEFAULT_NB_RESULTS_PER_PAGE }
     }
   } = deps
@@ -39,8 +39,8 @@ module.exports = function createValidation (deps) {
       nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
       // filters
-      id: [Joi.string(), Joi.array().unique().items(Joi.string())],
-      userId: [Joi.string(), Joi.array().unique().items(Joi.string())],
+      id: getArrayFilter(Joi.string()),
+      userId: getArrayFilter(Joi.string()),
       active: Joi.boolean()
     })
   }

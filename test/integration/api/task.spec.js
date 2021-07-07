@@ -15,6 +15,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 const { getRoundedDate } = require('../../../src/util/time')
@@ -88,6 +90,45 @@ test('list tasks with advanced filters', async (t) => {
     t.true(['ast_2l7fQps1I3a1gJYz2I3a'].includes(task.eventObjectId))
     t.is(task.eventType, 'asset_timeout')
     t.true(task.active)
+  })
+})
+
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['task:list:all'] })
+
+  await checkFilters({
+    t,
+    endpointUrl: '/tasks',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'eventType',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'eventObjectId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'active',
+        customListValues: [true, false],
+      },
+    ],
   })
 })
 

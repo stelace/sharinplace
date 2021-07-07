@@ -14,6 +14,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 test.before(async t => {
@@ -34,31 +36,48 @@ test.serial('list messages with pagination', async (t) => {
   })
 })
 
-test('list messages with id filter', async (t) => {
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['message:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/messages?id=msg_Vuz9KRs10NK1gAHrp0NK')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/messages',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
-  t.is(obj.results[0].id, 'msg_Vuz9KRs10NK1gAHrp0NK')
-})
-
-test('list messages with advanced filters', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['message:list:all'] })
-
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/messages?senderId=user-external-id')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const checkResultsFn = (t, message) => t.is(message.senderId, 'user-external-id')
-
-  checkCursorPaginatedListObject(t, obj, { checkResultsFn })
-  t.is(obj.results.length, 1)
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'userId',
+        customGetValue: (obj) => obj.receiverId || obj.senderId, // get one of the two values
+        customExactValueFilterCheck: (obj, value) => [obj.receiverId, obj.senderId].includes(value)
+      },
+      {
+        prop: 'senderId',
+      },
+      {
+        prop: 'receiverId',
+      },
+      {
+        prop: 'topicId',
+      },
+      {
+        prop: 'conversationId',
+      },
+    ],
+  })
 })
 
 test('cannot list messages if the current user does not belong to the conversation', async (t) => {

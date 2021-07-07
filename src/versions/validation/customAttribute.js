@@ -2,6 +2,7 @@ const {
   Joi,
   objectIdParamsSchema,
   replaceOffsetWithCursorPagination,
+  getArrayFilter,
 } = require('../../util/validation')
 const { DEFAULT_NB_RESULTS_PER_PAGE } = require('../../util/pagination')
 
@@ -44,7 +45,7 @@ schemas['2019-05-20'].list = {
     nbResultsPerPage: Joi.number().integer().min(1).max(100).default(DEFAULT_NB_RESULTS_PER_PAGE),
 
     // filters
-    id: [Joi.string(), Joi.array().unique().items(Joi.string())]
+    id: getArrayFilter(Joi.string())
   })
 }
 schemas['2019-05-20'].read = {

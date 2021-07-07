@@ -30,6 +30,8 @@ module.exports = {
   checkOffsetPaginationScenario,
   checkOffsetPaginatedListObject,
   checkOffsetPaginatedStatsObject,
+
+  checkFilters,
 }
 
 /**
@@ -512,4 +514,367 @@ function checkCursorPaginatedHistoryObject ({
       additionalResultCheckFn(result)
     }
   })
+}
+
+/**
+ * Util to check list/stats endpoint filters works as expected
+ * 3 types of filters are supported:
+ * - exact value filter
+ * - array filter
+ * - range filter
+ *
+ * If test values aren't provided, values will be automatically fetched from fixtures.
+ *
+ * Each filter will be tested with values according to their type to check
+ * that validation step is triggered, and that returned results are effectively filtered.
+ *
+ * Please note that the exact value check will also apply to array/range filters.
+ *
+ * @param {Object}   params
+ * @param {Object}   params.t - AVA test object
+ * @param {Object}   params.authorizationHeaders
+ * @param {String}   params.endpointUrl - tested endpoint
+ * @param {String}   [params.fetchEndpointUrl] - if not specified, fallback to endpointUrl
+ *   is the endpoint to hit to auto-generate test values
+ *   (useful to specify it for stats and history endpoints)
+ * @param {Function} [params.checkPaginationObject(t, obj)]
+ * @param {Object[]} params.filters
+ * @param {String}   params.filters[i].prop
+ * @param {Function} [params.filters[i].customGetValue(obj)]
+ *   custom getter to value with prop (by default obj[prop])
+ *
+ * Custom check filter functions, one by filter type
+ * `getValue(obj)` is the result of the getter function (obj[prop] or customGetValue(obj))
+ * @param {Function} [params.filters[i].customExactValueFilterCheck(obj, value)]
+ *  where value is a primitive type
+ *  default: (obj, value) => getValue(obj) === exactValue
+ * @param {Function} [params.filters[i].customArrayFilterCheck(obj, values)]
+ *  where values is an array
+ *  default: (obj, value) => values.includes(getValue(obj))
+ * @param {Function} [params.filters[i].customRangeFilterCheck(obj, rangeValues, isWithinRange)]
+ *  where rangeValues is an object with the following properties: `gt` or `gte`, and `lt` or `lte`
+ *  and isWithinRange is a helper function to check range
+ *  default: isWithinRange(getValue(obj), rangeValues)
+ *
+ * @param {Boolean}  [params.filters[i].isArrayFilter = false] - optional if customArrayFilterCheck provided
+ * @param {Boolean}  [params.filters[i].isRangeFilter = false] - optional if customRangeFilterCheck provided
+ * @param {Object[]} [params.filters[i].customTestValues] - if specified, will only use those values
+ *   and test each one of those values
+ *   otherwise, will perform a fetch of objects and test with fixtures values
+ * @param {Boolean}  [params.filters[i].noResultsExistenceCheck = false]
+ *   by default, will check if there are results while it should have (based on auto-fetched values)
+ */
+async function checkFilters ({
+  t,
+  authorizationHeaders,
+  endpointUrl,
+  fetchEndpointUrl,
+  checkPaginationObject,
+  filters,
+}) {
+  const getEndpoint = (endpointUrl, queryParams) => {
+    if (endpointUrl.includes('?')) return `${endpointUrl}&${queryParams}`
+    else return `${endpointUrl}?${queryParams}`
+  }
+
+  // prop=value
+  const getExactValueFilter = (prop, exactValue) => `${prop}=${exactValue}`
+
+  // prop[]=value1&prop[]=value2
+  const getArrayValuesFilter = (prop, values) => values.map(v => `${prop}[]=${v}`).join('&')
+
+  // prop=value1,value2
+  const getArrayCommaSeparatedValuesFilter = (prop, values) => `${prop}=${values.join(',')}`
+
+  // prop[gte]=min&prop[lte]=max or any combinations with `gt` or `gte`, and `lt` or `lte`
+  const getRangeFilter = (prop, range, isEqualToMin, isEqualToMax) => {
+    return `${prop}[${isEqualToMin ? 'gte' : 'gt'}]=${range.min}&${prop}[${isEqualToMax ? 'lte' : 'lt'}]=${range.max}`
+  }
+
+  // prop[gt]=min&prop[gte]=min
+  const getInvalidGreaterThanRangeFilter = (prop, range) => `${prop}[gt]=${range.gte}&${prop}[gte]=${range.gte}`
+
+  // prop[lt]=min&prop[lte]=min
+  const getInvalidLesserThanRangeFilter = (prop, range) => `${prop}[lt]=${range.lte}&${prop}[lte]=${range.lte}`
+
+  const isWithinRange = (value, rangeValues) => {
+    let result = true
+
+    if (rangeValues.gte) result = result && rangeValues.gte <= value
+    if (rangeValues.gt) result = result && rangeValues.gt < value
+    if (rangeValues.lte) result = result && value <= rangeValues.lte
+    if (rangeValues.lt) result = result && value < rangeValues.lt
+
+    return result
+  }
+
+  // prepare check result object functions by selecting default check or custom check function
+  const addCheckResultObjFunctions = (filter) => {
+    const {
+      prop,
+      customGetValue,
+      isArrayFilter,
+      isRangeFilter,
+
+      customExactValueFilterCheck,
+      customArrayFilterCheck,
+      customRangeFilterCheck,
+    } = filter
+
+    const getValue = (obj) => _.isFunction(customGetValue) ? customGetValue(obj) : obj[prop]
+    filter.getValue = getValue
+
+    filter.shouldCheckArrayFilter = isArrayFilter || _.isFunction(customArrayFilterCheck)
+    filter.shouldCheckRangeFilter = isRangeFilter || _.isFunction(customRangeFilterCheck)
+
+    // checks exact value filter returns objects whose property matches the filter value
+    filter.getExactValueCheckFn = _.curry((exactValue, obj) => {
+      return _.isFunction(customExactValueFilterCheck)
+        ? customExactValueFilterCheck(obj, exactValue)
+        : getValue(obj) === exactValue
+    })
+
+    if (filter.shouldCheckArrayFilter) {
+      // checks array filter returns objects whose property is included into filter values
+      filter.getArrayValuesCheckFn = _.curry((values, obj) => {
+        return _.isFunction(customArrayFilterCheck)
+          ? customArrayFilterCheck(obj, values)
+          : values.includes(getValue(obj))
+      })
+    } else if (filter.shouldCheckRangeFilter) {
+      // checks range filter returns objects whose property is included into the range filter
+      filter.getRangeValuesCheckFn = _.curry((rangeValues, obj) => {
+        return _.isFunction(customRangeFilterCheck)
+          ? customRangeFilterCheck(obj, rangeValues, isWithinRange) // pass util function
+          : isWithinRange(getValue(obj), rangeValues)
+      })
+    }
+  }
+
+  // compute test values filter based on fixtures or on provided filter property `customTestValues`
+  const setFilterTestValues = (filter, realResults) => {
+    const {
+      shouldCheckArrayFilter,
+      shouldCheckRangeFilter,
+      customTestValues,
+    } = filter
+
+    addCheckResultObjFunctions(filter)
+
+    const getValue = filter.getValue
+
+    const useCustomValues = customTestValues && customTestValues.length
+
+    const realValues = _.compact(_.uniq(realResults.map(getValue)))
+    const testValues = _.shuffle(useCustomValues ? customTestValues : realValues)
+
+    filter.shouldHaveResults = !useCustomValues && Boolean(realValues.length)
+
+    if (useCustomValues) filter.testExactValues = testValues
+
+    // number of different values from fixtures can be high
+    else filter.testExactValues = testValues.slice(0, 10) // values were shuffled
+
+    // pick only few values for filter to ensure the filter works
+    // selecting too many values may trigger a request for all results
+    if (shouldCheckArrayFilter && testValues.length) filter.testArrayValues = testValues.slice(0, 2)
+
+    if (shouldCheckRangeFilter && testValues.length) {
+      if (testValues.length === 1) {
+        const value = _.first(testValues)
+
+        filter.testRangeValues = {
+          min: value,
+          max: value,
+        }
+      } else {
+        const [value1, value2] = testValues // values were shuffled
+
+        // do not use Math.(min|max) as the type can be string
+        const min = value1 < value2 ? value1 : value2
+        const max = value1 > value2 ? value1 : value2
+
+        filter.testRangeValues = {
+          min,
+          max,
+        }
+      }
+    }
+  }
+
+  const maxNbResultsPerPage = 100
+
+  if (!fetchEndpointUrl) fetchEndpointUrl = endpointUrl
+
+  // fetch the objects to automatically get the different values for the filters
+  const { body: { results } } = await request(t.context.serverUrl)
+    .get(getEndpoint(fetchEndpointUrl, `nbResultsPerPage=${maxNbResultsPerPage}`))
+    .set(authorizationHeaders)
+    .expect(200)
+
+  for (const filter of filters) {
+    setFilterTestValues(filter, results)
+  }
+
+  const testCases = []
+
+  for (const filter of filters) {
+    const {
+      prop,
+      shouldCheckArrayFilter,
+      shouldCheckRangeFilter,
+      noResultsExistenceCheck,
+
+      // generated with the above add test values loop
+      shouldHaveResults,
+
+      testExactValues,
+      testArrayValues,
+      testRangeValues,
+
+      getExactValueCheckFn,
+      getArrayValuesCheckFn,
+      getRangeValuesCheckFn,
+    } = filter
+
+    // EXACT VALUE FILTER
+    testExactValues.forEach(exactValue => {
+      const exactValueFilter = getExactValueFilter(prop, exactValue)
+
+      testCases.push({
+        message: 'Testing exact value filter',
+        prop,
+        url: getEndpoint(endpointUrl, exactValueFilter),
+        checkObj: getExactValueCheckFn(exactValue),
+        shouldHaveResults: shouldHaveResults && !noResultsExistenceCheck,
+      })
+    })
+
+    // ARRAY FILTER
+    if (shouldCheckArrayFilter) {
+      if (testArrayValues && testArrayValues.length) {
+        const arrayFilter = getArrayValuesFilter(prop, testArrayValues)
+
+        testCases.push({
+          message: 'Testing array values filter',
+          prop,
+          url: getEndpoint(endpointUrl, arrayFilter),
+          checkObj: getArrayValuesCheckFn(testArrayValues),
+          shouldHaveResults: shouldHaveResults && !noResultsExistenceCheck,
+        })
+
+        const commaSeparatedValuesFilter = getArrayCommaSeparatedValuesFilter(prop, testArrayValues)
+
+        testCases.push({
+          message: 'Testing array comma-separated values filter',
+          prop,
+          url: getEndpoint(endpointUrl, commaSeparatedValuesFilter),
+          checkObj: getArrayValuesCheckFn(testArrayValues),
+          shouldHaveResults: shouldHaveResults && !noResultsExistenceCheck,
+        })
+      }
+    // RANGE FILTER
+    } else if (shouldCheckRangeFilter) {
+      if (testRangeValues) {
+        const invalidGreaterThanRangeFilter = getInvalidGreaterThanRangeFilter(prop, testRangeValues)
+
+        testCases.push({
+          message: 'Testing invalid greater than range filter',
+          prop,
+          url: getEndpoint(endpointUrl, invalidGreaterThanRangeFilter),
+          statusCode: 400,
+        })
+
+        const invalidLesserThanRangeFilter = getInvalidLesserThanRangeFilter(prop, testRangeValues)
+
+        testCases.push({
+          message: 'Testing invalid lesser than range filter',
+          prop,
+          url: getEndpoint(endpointUrl, invalidLesserThanRangeFilter),
+          statusCode: 400,
+        })
+
+        const uniqueRangeValue = testRangeValues.min === testRangeValues.max
+
+        if (!uniqueRangeValue) {
+          const rangeFilter1 = getRangeFilter(prop, testRangeValues, false, false)
+
+          testCases.push({
+            message: 'Testing range filter (gt, lt)',
+            prop,
+            url: getEndpoint(endpointUrl, rangeFilter1),
+            checkObj: getRangeValuesCheckFn({ gt: testRangeValues.min, lt: testRangeValues.max }),
+            shouldHaveResults: false, // not sure to have results if there are none within the range
+          })
+
+          const rangeFilter2 = getRangeFilter(prop, testRangeValues, false, true)
+
+          testCases.push({
+            message: 'Testing range filter (gt, lte)',
+            prop,
+            url: getEndpoint(endpointUrl, rangeFilter2),
+            checkObj: getRangeValuesCheckFn({ gt: testRangeValues.min, lte: testRangeValues.max }),
+            shouldHaveResults: shouldHaveResults && !noResultsExistenceCheck,
+          })
+
+          const rangeFilter3 = getRangeFilter(prop, testRangeValues, true, false)
+
+          testCases.push({
+            message: 'Testing range filter (gte, lt)',
+            prop,
+            url: getEndpoint(endpointUrl, rangeFilter3),
+            checkObj: getRangeValuesCheckFn({ gte: testRangeValues.min, lt: testRangeValues.max }),
+            shouldHaveResults: shouldHaveResults && !noResultsExistenceCheck,
+          })
+        }
+
+        const rangeFilter4 = getRangeFilter(prop, testRangeValues, true, true)
+
+        testCases.push({
+          message: 'Testing range filter (gte, lte)',
+          prop,
+          url: getEndpoint(endpointUrl, rangeFilter4),
+          checkObj: getRangeValuesCheckFn({ gte: testRangeValues.min, lte: testRangeValues.max }),
+          shouldHaveResults: shouldHaveResults && !noResultsExistenceCheck,
+        })
+      }
+    }
+  }
+
+  const getErrorMessage = (message, { url, obj, prop }) => {
+    return `${message} on ${prop} (${url})\n${JSON.stringify(obj, null, 2)}`
+  }
+
+  for (const testCase of testCases) {
+    const {
+      message,
+      url,
+      prop,
+      checkObj,
+      statusCode = 200,
+      shouldHaveResults,
+    } = testCase
+
+    const { body: paginationObject } = await request(t.context.serverUrl)
+      .get(url)
+      .set(authorizationHeaders)
+      .expect(statusCode)
+
+    if (statusCode === 200) {
+      if (_.isFunction(checkPaginationObject)) checkPaginationObject(t, paginationObject)
+
+      const { results } = paginationObject
+
+      results.forEach(obj =>
+        t.true(
+          checkObj(obj),
+          getErrorMessage(message, { url, obj, prop })
+        )
+      )
+
+      if (shouldHaveResults) {
+        t.true(results.length > 0, `Should have results for ${url}`)
+      }
+    }
+  }
 }

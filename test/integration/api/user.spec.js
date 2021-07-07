@@ -16,6 +16,8 @@ const {
 
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+
+  checkFilters,
 } = require('../../util')
 
 const { encodeBase64 } = require('../../../src/util/encoding')
@@ -75,6 +77,34 @@ test('list users with id filter', async (t) => {
 
   checkCursorPaginatedListObject(t, obj)
   t.is(obj.results.length, 1)
+})
+
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['user:list:all'] })
+
+  await checkFilters({
+    t,
+    endpointUrl: '/users',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      // `query`, `type` and `userOrganizationId` tested in other tests
+    ],
+  })
 })
 
 test('list users with query filter', async (t) => {

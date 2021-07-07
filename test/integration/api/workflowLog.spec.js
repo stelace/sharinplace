@@ -20,7 +20,11 @@ const {
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
   checkCursorPaginatedHistoryObject,
+
+  checkFilters,
 } = require('../../util')
+
+const { truncateDate } = require('../../../src/util/time')
 
 function getAuthorizationHeaders ({ t, systemKey }) {
   const headers = {
@@ -382,6 +386,81 @@ test('can apply type filter beyond the retention log period', async (t) => {
   checkCursorPaginatedListObject(t, objWithType, { checkResultsFn })
 })
 
+// use serial because no changes must be made during the check
+test.serial('check history filters', async (t) => {
+  const authorizationHeaders = getAuthorizationHeaders({ t, systemKey: getSystemKey() })
+
+  const { body: { results } } = await request(t.context.serverUrl)
+    .get('/workflow-logs?nbResultsPerPage=100')
+    .set(authorizationHeaders)
+    .expect(200)
+
+  const groupBy = 'day'
+
+  const customExactValueCheck = _.curry((prop, obj, value) => {
+    let filteredResults = results.filter(r => truncateDate(r.createdDate) === obj[groupBy])
+    filteredResults = filteredResults.filter(r => r[prop] === value)
+    return filteredResults.length === obj.count
+  })
+
+  const customArrayValuesCheck = _.curry((prop, obj, values) => {
+    let filteredResults = results.filter(r => truncateDate(r.createdDate) === obj[groupBy])
+    filteredResults = filteredResults.filter(r => values.includes(r[prop]))
+    return filteredResults.length === obj.count
+  })
+
+  const customRangeValuesCheck = _.curry((prop, obj, rangeValues) => {
+    let filteredResults = results.filter(r => truncateDate(r.createdDate) === obj[groupBy])
+    filteredResults = filteredResults.filter(r => rangeValues.gte <= r[prop] && r[prop] <= rangeValues.lte)
+    return filteredResults.length === obj.count
+  })
+
+  await checkFilters({
+    t,
+    endpointUrl: `/workflow-logs/history?groupBy=${groupBy}`,
+    fetchEndpointUrl: '/workflow-logs',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        customExactValueFilterCheck: customExactValueCheck('id'),
+        customArrayFilterCheck: customArrayValuesCheck('id'),
+      },
+      {
+        prop: 'createdDate',
+        customExactValueFilterCheck: customExactValueCheck('createdDate'),
+        customArrayFilterCheck: customRangeValuesCheck('createdDate'),
+
+        // the function will check a single value range, which will return no results
+        // triggering an error if this boolean isn't true
+        noResultsExistenceCheck: true,
+      },
+      {
+        prop: 'workflowId',
+        customExactValueFilterCheck: customExactValueCheck('workflowId'),
+        customArrayFilterCheck: customArrayValuesCheck('workflowId'),
+      },
+      {
+        prop: 'eventId',
+        customExactValueFilterCheck: customExactValueCheck('eventId'),
+        customArrayFilterCheck: customArrayValuesCheck('eventId'),
+      },
+      {
+        prop: 'runId',
+        customExactValueFilterCheck: customExactValueCheck('runId'),
+        customArrayFilterCheck: customArrayValuesCheck('runId'),
+      },
+      {
+        prop: 'type',
+        customExactValueFilterCheck: customExactValueCheck('type'),
+        customArrayFilterCheck: customArrayValuesCheck('type'),
+      },
+    ],
+  })
+})
+
 // need serial to ensure there is no insertion/deletion during pagination scenario
 test.serial('list workflow logs', async (t) => {
   const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['workflowLog:list:all'] })
@@ -391,25 +470,6 @@ test.serial('list workflow logs', async (t) => {
     endpointUrl: '/workflow-logs',
     authorizationHeaders,
   })
-})
-
-test('list workflow logs with id filter', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['workflowLog:list:all'] })
-
-  const { body: { results: workflowLogs } } = await request(t.context.serverUrl)
-    .get('/workflow-logs')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  const workflowLog = workflowLogs[0]
-
-  const { body: obj } = await request(t.context.serverUrl)
-    .get(`/workflow-logs?id=${workflowLog.id}`)
-    .set(authorizationHeaders)
-    .expect(200)
-
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
 })
 
 test('list workflow logs with advanced filters', async (t) => {
@@ -438,6 +498,45 @@ test('list workflow logs with advanced filters', async (t) => {
   }
 
   checkCursorPaginatedListObject(t, obj, { checkResultsFn })
+})
+
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['workflowLog:list:all'] })
+
+  await checkFilters({
+    t,
+    endpointUrl: '/workflow-logs',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
+
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'workflowId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'eventId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'runId',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'type',
+        customTestValues: ['action', 'skipped', 'stopped', 'runError', 'preRunError', 'notification']
+      },
+    ],
+  })
 })
 
 test('finds a workflow log', async (t) => {

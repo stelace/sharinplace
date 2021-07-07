@@ -10,8 +10,8 @@ const {
   testEventMetadata,
   checkCursorPaginationScenario,
   checkCursorPaginatedListObject,
+  checkFilters,
 } = require('../../util')
-const { computeDate } = require('../../../src/util/time')
 
 test.before(async t => {
   await before({ name: 'assetType' })(t)
@@ -175,41 +175,38 @@ test.serial('list asset types', async (t) => {
   })
 })
 
-test('list asset types with id filter', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
+// use serial because no changes must be made during the check
+test.serial('check list filters', async (t) => {
+  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['assetType:list:all'] })
 
-  const { body: obj } = await request(t.context.serverUrl)
-    .get('/asset-types?id=typ_RFpfQps1I3a1gJYz2I3a')
-    .set(authorizationHeaders)
-    .expect(200)
+  await checkFilters({
+    t,
+    endpointUrl: '/asset-types',
+    authorizationHeaders,
+    checkPaginationObject: checkCursorPaginatedListObject,
 
-  checkCursorPaginatedListObject(t, obj)
-  t.is(obj.results.length, 1)
-})
-
-test('list asset types with advanced filters', async (t) => {
-  const authorizationHeaders = await getAccessTokenHeaders({ t, permissions: ['asset:list:all'] })
-
-  const now = new Date().toISOString()
-  const minCreatedDate = computeDate(now, '-10d')
-
-  const { body: obj1 } = await request(t.context.serverUrl)
-    .get('/asset-types?active=true')
-    .set(authorizationHeaders)
-    .expect(200)
-
-  obj1.results.forEach(assetType => {
-    t.true(assetType.active)
-  })
-
-  const { body: obj2 } = await request(t.context.serverUrl)
-    .get(`/asset-types?createdDate[gte]=${minCreatedDate}&isDefault=false`)
-    .set(authorizationHeaders)
-    .expect(200)
-
-  obj2.results.forEach(assetType => {
-    t.true(assetType.createdDate >= minCreatedDate)
-    t.false(assetType.isDefault)
+    filters: [
+      {
+        prop: 'id',
+        isArrayFilter: true,
+      },
+      {
+        prop: 'createdDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'updatedDate',
+        isRangeFilter: true,
+      },
+      {
+        prop: 'isDefault',
+        customTestValues: [true, false],
+      },
+      {
+        prop: 'active',
+        customTestValues: [true, false],
+      },
+    ],
   })
 })
 
