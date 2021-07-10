@@ -48,26 +48,28 @@ The easiest way to deploy and leverage Stelace is with our official [managed inf
 
 <!-- TOC depthFrom:2 -->
 
-- [Stelace as-a-service](#stelace-as-a-service)
-- [Contents](#contents)
-- [Built with](#built-to-last)
-- [What is included](#what-is-included)
-- [Setup](#setup)
-  - [Docker](#docker)
-  - [Install yarn](#install-yarn)
-  - [Clone](#clone)
-- [Development](#development)
-  - [Start dev databases](#start-development-databases)
-  - [Run server](#run-server)
-  - [Develop with API server container](#develop-with-api-server-container)
-- [Tests](#tests)
-  - [Logs](#logs)
-  - [Using API server container](#using-api-server-container)
-- [Versioning](#versioning)
-- [Dependencies](#dependencies)
-- [Contributing](#contributing)
-- [License](#license)
-- [We care about open-source](#we-care-about-open-source)
+- [Stelace API Server](#stelace-api-server)
+  - [Stelace as-a-service](#stelace-as-a-service)
+  - [Contents](#contents)
+  - [Built to last](#built-to-last)
+  - [What is included](#what-is-included)
+  - [Setup](#setup)
+    - [Docker](#docker)
+    - [Install yarn](#install-yarn)
+    - [Clone](#clone)
+  - [Development](#development)
+    - [Start development databases](#start-development-databases)
+    - [Run server](#run-server)
+    - [Develop with API server container](#develop-with-api-server-container)
+  - [Tests](#tests)
+    - [Logs](#logs)
+    - [Using API server container](#using-api-server-container)
+  - [Production](#production)
+  - [Versioning](#versioning)
+  - [Contributing](#contributing)
+  - [Dependencies](#dependencies)
+  - [License](#license)
+  - [We care about open-source](#we-care-about-open-source)
 
 <!-- /TOC -->
 
@@ -148,6 +150,8 @@ _Shorthand for: `docker-compose up -d elasticsearch postgresql redis`_
 
 ### Run server
 
+> Note: These commands will fail if you do not have Node version 12.14 or higher.  It is recommended to build and test with Docker for more stability and less local customization.
+
 - Run `yarn` to install dependencies.
 
 - Run `yarn prepare` to install husky hooks
@@ -194,6 +198,7 @@ Here is how you can install dependencies and init database:
 ```sh
 # ephemeral container with --rm option
 docker-compose run --rm api yarn
+docker-compose run --rm --no-deps api yarn knex migrate:latest # hard code api keys
 docker-compose run --rm api yarn seed
 ```
 
