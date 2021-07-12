@@ -63,7 +63,7 @@
     "cron": "^1.8.2",
     "debug": "~4.3.2",
     "dotenv": "^10.0.0",
-    "elastic-apm-node": "~3.16.0",
+    "elastic-apm-node": "~3.17.0",
     "glob": "^7.1.7",
     "handlebars": "^4.7.7",
     "http-errors": "^1.8.0",
