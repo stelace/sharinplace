@@ -2991,20 +2991,10 @@ fast-json-stable-stringify@^2.0.0:
   resolved "https://registry.yarnpkg.com/fast-json-stable-stringify/-/fast-json-stable-stringify-2.0.0.tgz#d5142c0caee6b1189f87d3a76111064f86c8bbf2"
   integrity sha1-1RQsDK7msRifh9OnYREGT4bIu/I=
 
-fast-json-stringify@^2.4.1:
+fast-json-stringify@^2.4.1, fast-json-stringify@^2.5.2:
   version "2.7.3"
   resolved "https://registry.yarnpkg.com/fast-json-stringify/-/fast-json-stringify-2.7.3.tgz#02145e3a821d6ce1d8a8bfb919d5cbe96cdcd693"
   integrity sha512-QNIh4CQ5S3D5vO7Bv88Si8TFQGZgxv15h2n/79TESr4lhZ8ptq3R9SCTteslr+pwrZQlvrAFgcXgFuUIgS3UQA==
-  dependencies:
-    ajv "^6.11.0"
-    deepmerge "^4.2.2"
-    rfdc "^1.2.0"
-    string-similarity "^4.0.1"
-
-fast-json-stringify@^2.5.2:
-  version "2.5.2"
-  resolved "https://registry.yarnpkg.com/fast-json-stringify/-/fast-json-stringify-2.5.2.tgz#c6417122f9cc303fd15cd4a33e1f0a136b33ae51"
-  integrity sha512-H0/Wq7jj/i96DycCySdh+Jl0MubqaScM51GJkdJmjzwyiNpxAgQ9deYqk2H8SNOfwPj21RtTXMkMV5GosUWKeQ==
   dependencies:
     ajv "^6.11.0"
     deepmerge "^4.2.2"
@@ -6837,10 +6827,10 @@ rimraf@~2.4.0:
   dependencies:
     glob "^6.0.1"
 
-roarr@^4.2.5:
-  version "4.2.5"
-  resolved "https://registry.yarnpkg.com/roarr/-/roarr-4.2.5.tgz#b4e5ddba4ef40ce66fbef0dc57cf9c584687a7cb"
-  integrity sha512-ZSs1hr2gyWickWDr2Yw0qcuef+EJKwZtNxUj7poxvIDxVq+ZvQreVNdPVLHonWpavBeZaOcAGVFV5xM/HqRR8g==
+roarr@^7.0.1:
+  version "7.0.1"
+  resolved "https://registry.yarnpkg.com/roarr/-/roarr-7.0.1.tgz#c222266a7a0d2e8a9d1c3a2cbbc9b84d919851a7"
+  integrity sha512-EHoF+OrCv4JL8SFp4m1KnCgUAuMTp/PunPvuWaj4gQtQRQ3437U+dzHkLVn/AiSYPBKFOuYUq/DCAu0w2tIcmQ==
   dependencies:
     boolean "^3.0.2"
     detect-node "^2.0.5"
