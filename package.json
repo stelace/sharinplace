@@ -54,7 +54,7 @@
     "@hapi/bourne": "^2.0.0",
     "@hapi/joi": "^17.1.1",
     "aws-param-store": "^3.2.0",
-    "aws-sdk": "^2.939.0",
+    "aws-sdk": "^2.943.0",
     "bcrypt": "^5.0.1",
     "big.js": "^6.1.1",
     "bluebird": "^3.7.2",
